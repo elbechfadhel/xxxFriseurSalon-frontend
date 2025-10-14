@@ -45,6 +45,29 @@ const HomePage: React.FC = () => {
                             </Link>
 
                         </div>
+
+                        {/* QR CODE SECTION */}
+                        <div
+                            className="mt-6 flex flex-col items-center text-center space-y-4 md:space-y-0 md:flex-row md:items-center md:justify-center md:gap-8">
+                            {/* Left: App Store badge + text */}
+                            <div className="flex flex-col items-center text-center space-y-2">
+                                <img
+                                    src="/images/app-store-badge.png"
+                                    alt="Download on the App Store"
+                                    className="w-32 md:w-40"
+                                />
+
+                            </div>
+
+                            {/* Right: QR code */}
+                            <img
+                                src="/images/qr-code-app.PNG"
+                                alt="App Store QR code"
+                                className="w-32 h-32 md:w-36 md:h-36 object-contain hover:scale-105 transition-transform"
+                            />
+                        </div>
+
+
                     </div>
 
                     {/* Right: Random Highlight Grid */}
@@ -62,7 +85,7 @@ const HomePage: React.FC = () => {
             <section className="px-4 sm:px-6 mt-0">
                 <div className="max-w-6xl mx-auto">
 
-                    <div className="max-w-5xl mx-auto">
+                <div className="max-w-5xl mx-auto">
                         <ServicesGrid />
                     </div>
 
