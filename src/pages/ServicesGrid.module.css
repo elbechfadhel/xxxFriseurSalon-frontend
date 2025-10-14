@@ -1,0 +1,117 @@
+/* Theme tokens */
+.wrapper {
+    --card-bg: #111418;
+    --card-bg-2: #0d1116;
+    --text: #e9edf3;
+    --muted: #9aa3b2;
+    --ring: rgba(110,231,183,0.28);
+    --border: rgba(255,255,255,0.08);
+    --shadow: 0 8px 28px rgba(0,0,0,0.35);
+    color: var(--text);
+    background: transparent;
+}
+
+.header {
+    text-align: center;
+    margin: 1.25rem 0 0.5rem;
+}
+.title {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #4e9f66;
+    text-align: center;
+}
+.subtitle {
+    margin: 0.35rem 0 0;
+    color: var(--muted);
+}
+
+/* Force all services into one row */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr); /* always 6 columns */
+    gap: 1rem;
+    list-style: none;
+    padding: 0;
+    margin: 1rem 0 2rem;
+}
+
+/* Card */
+.card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: stretch;
+    background: linear-gradient(180deg, var(--card-bg), var(--card-bg-2));
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+    outline: none;
+}
+.card:hover,
+.card:focus-visible {
+    transform: translateY(-3px);
+    border-color: var(--ring);
+    box-shadow: 0 14px 36px rgba(0,0,0,0.45), 0 0 0 6px var(--ring);
+}
+
+/* Image side */
+.imageWrap {
+    position: relative;
+    width: 100%;
+    min-height: 140px; /* smaller so 6 fit in one row */
+    overflow: hidden;
+    isolation: isolate;
+}
+.image {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    transform: scale(1.02);
+    transition: transform .35s ease;
+}
+.card:hover .image { transform: scale(1.07); }
+
+/* Price badge */
+.badge {
+    position: absolute;
+    top: .65rem;
+    inset-inline-end: .65rem;
+    background: rgba(17,24,39,0.7);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,0.18);
+    color: var(--text);
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: .25rem .5rem;
+    border-radius: 999px;
+}
+
+/* Text side */
+.content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 0.6rem 0.8rem;
+    justify-content: center;
+    min-width: 0;
+}
+.name {
+    margin: 0 0 .25rem 0;
+    font-size: 0.95rem;
+    line-height: 1.25;
+}
+.desc {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.85rem;
+}
+
+/* Disable wrapping layout changes for TV */
+@media (prefers-reduced-motion: reduce) {
+    .card, .image { transition: none; }
+}
