@@ -56,15 +56,17 @@ const HomePage: React.FC = () => {
                                     alt="Download on the App Store"
                                     className="w-32 md:w-40"
                                 />
+                                <img
+                                    src="/images/qr-code-app.PNG"
+                                    alt="App Store QR code"
+                                    className="w-32 h-32 md:w-36 md:h-36 object-contain hover:scale-105 transition-transform"
+                                />
+                                {t('downloadOurApp')}
 
                             </div>
 
                             {/* Right: QR code */}
-                            <img
-                                src="/images/qr-code-app.PNG"
-                                alt="App Store QR code"
-                                className="w-32 h-32 md:w-36 md:h-36 object-contain hover:scale-105 transition-transform"
-                            />
+
                         </div>
 
 
@@ -72,7 +74,7 @@ const HomePage: React.FC = () => {
 
                     {/* Right: Random Highlight Grid */}
                     <div className="md:col-span-4 lg:col-span-3 place-self-center md:place-self-auto">
-                        <img
+                    <img
                             src="/images/logo-xxx.png"
                             alt="Barbershop Logo"
                             className="w-[150px] md:w-[180px] lg:w-[220px] h-auto opacity-90"
