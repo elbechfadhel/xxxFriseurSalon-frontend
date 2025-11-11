@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { de, enUS } from 'date-fns/locale';
 import DatePicker from 'react-datepicker';
 import EmployeeSelector from '@/pages/EmployeeSelector.tsx';
+import { useAuth } from '@/context/AuthContext';
 
 interface Employee {
     id: string;
@@ -14,11 +15,9 @@ interface Employee {
 
 // --- helpers ---
 const isValidGermanPhone = (v: string) => {
-    // Nettoyer et retirer un éventuel zéro de tête
-    const digits = v.replace(/\D/g, "").replace(/^0/, "");
-    // Les mobiles allemands : commencent par 1 et font entre 7 et 11 chiffres
+    const digits = v.replace(/\D/g, '').replace(/^0/, '');
     return /^1[5-7,6,9][0-9]{6,9}$/.test(digits);
-};// 10 digits, no leading 0
+};
 
 async function isSlotStillFree(apiBase: string, employeeId: string, slotISO: string) {
     const dayStr = new Date(slotISO).toISOString().slice(0, 10);
@@ -30,6 +29,9 @@ async function isSlotStillFree(apiBase: string, employeeId: string, slotISO: str
 
 const BookingPage: React.FC = () => {
     const { t, i18n } = useTranslation();
+    const { customer } = useAuth();
+    const loggedIn = !!customer;
+
     const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
     const [selectedDateTime, setSelectedDateTime] = useState<string | null>(null);
     const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
@@ -37,7 +39,7 @@ const BookingPage: React.FC = () => {
     const [employees, setEmployees] = useState<Employee[]>([]);
 
     const [customerName, setCustomerName] = useState('');
-    const [phone, setPhone] = useState(''); // national, 10 digits, no leading 0
+    const [phone, setPhone] = useState(''); // guest-only
 
     const [codeSent, setCodeSent] = useState(false);
     const [smsCode, setSmsCode] = useState('');
@@ -49,6 +51,11 @@ const BookingPage: React.FC = () => {
     const API_BASE = import.meta.env.VITE_API_URL;
     const getLocale = () => (i18n.language?.startsWith('de') ? de : enUS);
 
+    // Prefill when logged in
+    useEffect(() => {
+        if (loggedIn) setCustomerName(customer?.name || '');
+    }, [loggedIn, customer]);
+
     useEffect(() => {
         const fetchEmployees = async () => {
             try {
@@ -56,11 +63,12 @@ const BookingPage: React.FC = () => {
                 const data = await res.json();
                 setEmployees(data);
             } catch {
-                setNotification(t('failedLoadEmployees'));
+                setNotification(t('failedLoadEmployees') as string);
                 setNotificationType('error');
             }
         };
         fetchEmployees();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const clearNotice = () => {
@@ -68,17 +76,18 @@ const BookingPage: React.FC = () => {
         setNotificationType(null);
     };
 
+    // --------- Guest (SMS) flow ----------
     const handleSendSmsCode = async () => {
         clearNotice();
 
         if (!selectedDateTime || !selectedEmployee || !customerName.trim()) {
-            setNotification(t('bookingInfoMissing') || 'Please complete the booking info first.');
+            setNotification((t('bookingInfoMissing') as string) || 'Please complete the booking info first.');
             setNotificationType('error');
             return;
         }
 
         if (!isValidGermanPhone(phone)) {
-            setNotification(t('invalidPhone') || 'Bitte gib eine gültige deutsche Nummer ein.');
+            setNotification((t('invalidPhone') as string) || 'Bitte gib eine gültige deutsche Nummer ein.');
             setNotificationType('error');
             return;
         }
@@ -89,7 +98,7 @@ const BookingPage: React.FC = () => {
             // 1) check slot availability first
             const free = await isSlotStillFree(API_BASE, selectedEmployee, selectedDateTime);
             if (!free) {
-                setNotification(t('booking.slotTaken') || 'This time slot has just been taken. Please pick another.');
+                setNotification((t('booking.slotTaken') as string) || 'This time slot has just been taken. Please pick another.');
                 setNotificationType('error');
                 setSelectedDateTime(null);
                 setResetTrigger((p) => p + 1);
@@ -114,10 +123,10 @@ const BookingPage: React.FC = () => {
             }
 
             setCodeSent(true);
-            setNotification(t('verificationCodeSent') || 'Verification code sent via SMS.');
+            setNotification((t('verificationCodeSent') as string) || 'Verification code sent via SMS.');
             setNotificationType('success');
         } catch {
-            setNotification(t('booking.errors.sendCodeFailed') || 'Failed to send SMS code.');
+            setNotification((t('booking.errors.sendCodeFailed') as string) || 'Failed to send SMS code.');
             setNotificationType('error');
         } finally {
             setBusy(false);
@@ -128,12 +137,12 @@ const BookingPage: React.FC = () => {
         clearNotice();
 
         if (!smsCode.trim()) {
-            setNotification(t('enterCode') || 'Please enter the code.');
+            setNotification((t('enterCode') as string) || 'Please enter the code.');
             setNotificationType('error');
             return;
         }
         if (!selectedDateTime || !selectedEmployee) {
-            setNotification(t('bookingInfoMissing') || 'Booking info missing.');
+            setNotification((t('bookingInfoMissing') as string) || 'Booking info missing.');
             setNotificationType('error');
             return;
         }
@@ -145,7 +154,7 @@ const BookingPage: React.FC = () => {
             const national = phone.replace(/[^\d]/g, '');
             const fullPhone = `+49${national}`;
 
-            // 1) confirm SMS code (⚠️ correct endpoint = /verify-phone/check)
+            // 1) confirm SMS code
             const verifyRes = await fetch(`${API_BASE}/verify-phone/check`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -157,8 +166,6 @@ const BookingPage: React.FC = () => {
             });
 
             const verifyJson = await verifyRes.json();
-            console.log("verify-phone/check response:", verifyJson);
-
             if (!verifyRes.ok || verifyJson?.success !== true) {
                 throw new Error('Invalid verification code');
             }
@@ -166,21 +173,21 @@ const BookingPage: React.FC = () => {
             // 2) recheck slot before final booking
             const free = await isSlotStillFree(API_BASE, selectedEmployee, selectedDateTime);
             if (!free) {
-                setNotification(t('booking.slotTaken') || 'This time slot has just been taken. Please pick another.');
+                setNotification((t('booking.slotTaken') as string) || 'This time slot has just been taken. Please pick another.');
                 setNotificationType('error');
                 setSelectedDateTime(null);
                 setResetTrigger((p) => p + 1);
                 return;
             }
 
-            // 3) create reservation
+            // 3) create reservation (guest)
             const bookingRes = await fetch(`${API_BASE}/reservations`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     customerName,
                     phone: fullPhone,
-                    service: 'Haircut', // 🔧 replace with real serviceId like in mobile
+                    service: 'Haircut', // TODO: replace with real service
                     date: selectedDateTime,
                     employeeId: selectedEmployee,
                     verificationMethod: 'sms',
@@ -189,14 +196,14 @@ const BookingPage: React.FC = () => {
 
             if (!bookingRes.ok) {
                 const errText = await bookingRes.text();
-                console.error("Booking failed:", bookingRes.status, errText);
+                console.error('Booking failed:', bookingRes.status, errText);
                 throw new Error('Failed to book');
             }
 
-            setNotification(t('bookingConfirmed') || 'Your booking is confirmed!');
+            setNotification((t('bookingConfirmed') as string) || 'Your booking is confirmed!');
             setNotificationType('success');
 
-            // reset form
+            // reset form for guest
             setCustomerName('');
             setPhone('');
             setSmsCode('');
@@ -206,20 +213,87 @@ const BookingPage: React.FC = () => {
             setSelectedDate(new Date());
             setResetTrigger((p) => p + 1);
         } catch (err) {
-            console.error("handleVerifyCodeAndBook error:", err);
-            setNotification(t('bookingError') || 'Booking failed. Please try again.');
+            console.error('handleVerifyCodeAndBook error:', err);
+            setNotification((t('bookingError') as string) || 'Booking failed. Please try again.');
             setNotificationType('error');
         } finally {
             setBusy(false);
         }
     };
 
+    // --------- Logged-in (no SMS) ----------
+    const handleBookAsLoggedIn = async () => {
+        clearNotice();
 
-    const isBookingInfoValid =
-        !!selectedDateTime &&
-        !!selectedEmployee &&
-        !!customerName.trim() &&
-        isValidGermanPhone(phone);
+        if (!selectedDateTime || !selectedEmployee || !(customer?.name || customerName)) {
+            setNotification((t('bookingInfoMissing') as string) || 'Please complete the booking info first.');
+            setNotificationType('error');
+            return;
+        }
+
+        try {
+            setBusy(true);
+
+            // Recheck slot
+            const free = await isSlotStillFree(API_BASE, selectedEmployee, selectedDateTime);
+            if (!free) {
+                setNotification((t('booking.slotTaken') as string) || 'This time slot has just been taken. Please pick another.');
+                setNotificationType('error');
+                setSelectedDateTime(null);
+                setResetTrigger((p) => p + 1);
+                return;
+            }
+
+            const token = localStorage.getItem('customer_token');
+
+            // Create reservation (authenticated)
+            const bookingRes = await fetch(`${API_BASE}/reservations`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
+                body: JSON.stringify({
+                    customerName: customer?.name || customerName || '—',
+                    phone: customer?.phoneE164 || null, // optional, backend can read from customer
+                    service: 'Haircut', // TODO: replace with real service
+                    date: selectedDateTime,
+                    employeeId: selectedEmployee,
+                    verificationMethod: 'account',
+                }),
+            });
+
+            if (!bookingRes.ok) {
+                const errText = await bookingRes.text();
+                console.error('Booking failed:', bookingRes.status, errText);
+                throw new Error('Failed to book');
+            }
+
+            setNotification((t('bookingConfirmed') as string) || 'Your booking is confirmed!');
+            setNotificationType('success');
+
+            // Reset only time selection; keep name from profile
+            setSmsCode('');
+            setCodeSent(false);
+            setSelectedDateTime(null);
+            setSelectedEmployee(null);
+            setSelectedDate(new Date());
+            setResetTrigger((p) => p + 1);
+        } catch (err) {
+            console.error('handleBookAsLoggedIn error:', err);
+            setNotification((t('bookingError') as string) || 'Booking failed. Please try again.');
+            setNotificationType('error');
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    // --------- Validation flags ----------
+    const isBookingInfoValidGuest =
+        !!selectedDateTime && !!selectedEmployee && !!customerName.trim() && isValidGermanPhone(phone);
+
+    const isBookingInfoValidLoggedIn =
+        !!selectedDateTime && !!selectedEmployee && !!(customer?.name || customerName);
 
     return (
         <div className="px-4 py-8">
@@ -263,7 +337,7 @@ const BookingPage: React.FC = () => {
                                     setSelectedEmployee(id);
                                     setResetTrigger((prev) => prev + 1);
                                 }}
-                                apiBase={import.meta.env.VITE_API_URL}
+                                apiBase={API_BASE}
                             />
                         </div>
                     </div>
@@ -292,32 +366,35 @@ const BookingPage: React.FC = () => {
                                 type="text"
                                 value={customerName}
                                 onChange={(e) => setCustomerName(e.target.value)}
-                                placeholder={t('fullNamePlaceholder')}
-                                className={`w-full border rounded px-3 py-2 shadow-sm ${!customerName.trim() ? 'border-red-500' : ''}`}
+                                placeholder={t('fullNamePlaceholder') as string}
+                                className={`w-full border rounded px-3 py-2 shadow-sm ${!customerName.trim() ? 'border-red-500' : ''} ${loggedIn ? 'bg-gray-50' : ''}`}
+                                readOnly={loggedIn}
                             />
                             {!customerName.trim() && (
                                 <p className="text-red-500 text-sm mt-1">{t('nameRequired')}</p>
                             )}
                         </div>
 
-                        {/* Phone */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">{t('phoneNumber')}</label>
-                            <div className="flex items-center border rounded px-3 py-2 shadow-sm">
-                                <img src="https://flagcdn.com/w40/de.png" alt="Germany" className="w-5 h-4 mr-2" />
-                                <span className="mr-2 text-sm text-gray-700">+49</span>
-                                <input
-                                    type="tel"
-                                    value={phone}
-                                    onChange={(e) => setPhone(e.target.value)}
-                                    placeholder={t('phonePlaceholder')}
-                                    className="flex-1 outline-none"
-                                />
+                        {/* Phone (guest only) */}
+                        {!loggedIn && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('phoneNumber')}</label>
+                                <div className="flex items-center border rounded px-3 py-2 shadow-sm">
+                                    <img src="https://flagcdn.com/w40/de.png" alt="Germany" className="w-5 h-4 mr-2" />
+                                    <span className="mr-2 text-sm text-gray-700">+49</span>
+                                    <input
+                                        type="tel"
+                                        value={phone}
+                                        onChange={(e) => setPhone(e.target.value)}
+                                        placeholder={t('phonePlaceholder') as string}
+                                        className="flex-1 outline-none"
+                                    />
+                                </div>
+                                {!isValidGermanPhone(phone) && phone && (
+                                    <p className="text-sm text-red-500 mt-1">{t('invalidPhone')}</p>
+                                )}
                             </div>
-                            {!isValidGermanPhone(phone) && phone && (
-                                <p className="text-sm text-red-500 mt-1">{t('invalidPhone')}</p>
-                            )}
-                        </div>
+                        )}
                     </div>
 
                     {/* Notifications */}
@@ -337,38 +414,54 @@ const BookingPage: React.FC = () => {
                         </div>
                     )}
 
-                    {/* Send code / verify code */}
+                    {/* Actions */}
                     <div className="mt-6 mb-2">
-                        {!codeSent ? (
+                        {loggedIn ? (
                             <button
-                                onClick={handleSendSmsCode}
-                                disabled={!isBookingInfoValid || busy}
+                                onClick={handleBookAsLoggedIn}
+                                disabled={!isBookingInfoValidLoggedIn || busy}
                                 className={`w-full py-3 rounded-lg text-lg font-semibold ${
-                                    !isBookingInfoValid || busy
+                                    !isBookingInfoValidLoggedIn || busy
                                         ? 'bg-gray-200 text-gray-500 border border-gray-300 shadow-inner cursor-not-allowed'
                                         : 'bg-[#4e9f66] hover:bg-[#3e8455] text-white'
                                 }`}
                             >
-                                {busy ? t('booking.sending') || 'Sending...' : t('sendVerificationCode') || 'Send SMS Code'}
+                                {busy ? (t('booking.sending') as string) || 'Booking…' : (t('confirmBooking') as string) || 'Confirm booking'}
                             </button>
                         ) : (
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mt-2">{t('enterCode')}</label>
-                                <input
-                                    type="text"
-                                    value={smsCode}
-                                    onChange={(e) => setSmsCode(e.target.value)}
-                                    placeholder={t('codePlaceholder')}
-                                    className="w-full border rounded px-3 py-2 shadow-sm mt-1"
-                                />
-                                <button
-                                    onClick={handleVerifyCodeAndBook}
-                                    disabled={busy || !smsCode.trim()}
-                                    className="w-full mt-3 bg-[#4e9f66] hover:bg-[#3e8455] text-white py-2 rounded font-semibold disabled:opacity-50"
-                                >
-                                    {t('verifyAndBook')}
-                                </button>
-                            </div>
+                            <>
+                                {!codeSent ? (
+                                    <button
+                                        onClick={handleSendSmsCode}
+                                        disabled={!isBookingInfoValidGuest || busy}
+                                        className={`w-full py-3 rounded-lg text-lg font-semibold ${
+                                            !isBookingInfoValidGuest || busy
+                                                ? 'bg-gray-200 text-gray-500 border border-gray-300 shadow-inner cursor-not-allowed'
+                                                : 'bg-[#4e9f66] hover:bg-[#3e8455] text-white'
+                                        }`}
+                                    >
+                                        {busy ? (t('booking.sending') as string) || 'Sending...' : (t('sendVerificationCode') as string) || 'Send SMS Code'}
+                                    </button>
+                                ) : (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mt-2">{t('enterCode')}</label>
+                                        <input
+                                            type="text"
+                                            value={smsCode}
+                                            onChange={(e) => setSmsCode(e.target.value)}
+                                            placeholder={t('codePlaceholder') as string}
+                                            className="w-full border rounded px-3 py-2 shadow-sm mt-1"
+                                        />
+                                        <button
+                                            onClick={handleVerifyCodeAndBook}
+                                            disabled={busy || !smsCode.trim()}
+                                            className="w-full mt-3 bg-[#4e9f66] hover:bg-[#3e8455] text-white py-2 rounded font-semibold disabled:opacity-50"
+                                        >
+                                            {t('verifyAndBook')}
+                                        </button>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 </div>

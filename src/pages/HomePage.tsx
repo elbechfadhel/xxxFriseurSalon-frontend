@@ -46,6 +46,7 @@ const HomePage: React.FC = () => {
 
                         </div>
 
+
                         {/* QR CODE SECTION */}
                         <div
                             className="mt-6 flex flex-col items-center text-center space-y-4 md:space-y-0 md:flex-row md:items-center md:justify-center md:gap-8">
