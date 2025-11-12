@@ -5,6 +5,7 @@ import { CalendarDays, Clock, Scissors, Smile } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import ServicesGrid from "./ServicesGrid";
+import AccountPromo from "../components/AccountPromo.tsx";
 
 const HomePage: React.FC = () => {
     const { t } = useTranslation();
@@ -47,35 +48,15 @@ const HomePage: React.FC = () => {
                         </div>
 
 
-                        {/* QR CODE SECTION */}
-                        <div
-                            className="mt-6 flex flex-col items-center text-center space-y-4 md:space-y-0 md:flex-row md:items-center md:justify-center md:gap-8">
-                            {/* Left: App Store badge + text */}
-                            <div className="flex flex-col items-center text-center space-y-2">
-                                <img
-                                    src="/images/app-store-badge.png"
-                                    alt="Download on the App Store"
-                                    className="w-32 md:w-40"
-                                />
-                                <img
-                                    src="/images/qr-code-app.PNG"
-                                    alt="App Store QR code"
-                                    className="w-32 h-32 md:w-36 md:h-36 object-contain hover:scale-105 transition-transform"
-                                />
-                                {t('downloadOurApp')}
 
-                            </div>
 
-                            {/* Right: QR code */}
-
-                        </div>
 
 
                     </div>
 
                     {/* Right: Random Highlight Grid */}
                     <div className="md:col-span-4 lg:col-span-3 place-self-center md:place-self-auto">
-                    <img
+                        <img
                             src="/images/logo-xxx.png"
                             alt="Barbershop Logo"
                             className="w-[150px] md:w-[180px] lg:w-[220px] h-auto opacity-90"
@@ -83,6 +64,8 @@ const HomePage: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            <AccountPromo />
 
             {/* SERVICES SECTION (using ServicesGrid) */}
             <section className="px-4 sm:px-6 mt-0">
@@ -96,7 +79,28 @@ const HomePage: React.FC = () => {
             </section>
 
             {/* TESTIMONIALS */}
+            {/* QR CODE SECTION */}
+            <div
+                className="mt-6 flex flex-col items-center text-center space-y-4 md:space-y-0 md:flex-row md:items-center md:justify-center md:gap-8">
+                {/* Left: App Store badge + text */}
+                <div className="flex flex-col items-center text-center space-y-2">
+                    <img
+                        src="/images/app-store-badge.png"
+                        alt="Download on the App Store"
+                        className="w-32 md:w-40"
+                    />
+                    <img
+                        src="/images/qr-code-app.PNG"
+                        alt="App Store QR code"
+                        className="w-32 h-32 md:w-36 md:h-36 object-contain hover:scale-105 transition-transform"
+                    />
+                    {t('downloadOurApp')}
 
+                </div>
+
+                {/* Right: QR code */}
+
+            </div>
 
 
             {/* Why Choose Us */}

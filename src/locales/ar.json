@@ -303,5 +303,12 @@
   "changePassword": "تغيير كلمة المرور",
   "currentPassword": "كلمة المرور الحالية",
   "passwordChanged": "تم تغيير كلمة المرور بنجاح.",
-  "changePasswordFailed": "فشل تغيير كلمة المرور."
+  "changePasswordFailed": "فشل تغيير كلمة المرور.",
+  "accountPromo": {
+    "title": "أنشئ حسابًا لحجز أسرع",
+    "b1": "إعادة الحجز بنقرة واحدة",
+    "b2": "لا حاجة لرمز SMS",
+    "b3": "عرض وإدارة حجوزاتك"
+  },
+  "ctaBadge": { "noSms": "لا حاجة لـ SMS عند تسجيل الدخول" }
 }

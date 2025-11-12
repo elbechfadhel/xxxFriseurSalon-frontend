@@ -306,6 +306,13 @@
   "changePassword": "Passwort ändern",
   "currentPassword": "Aktuelles Passwort",
   "passwordChanged": "Passwort wurde erfolgreich geändert.",
-  "changePasswordFailed": "Passwort konnte nicht geändert werden."
+  "changePasswordFailed": "Passwort konnte nicht geändert werden.",
+  "accountPromo": {
+    "title": "Konto erstellen für schnelleres Buchen",
+    "b1": "Buchungen mit 1-Klick wiederholen",
+    "b2": "Kein SMS-Code erforderlich",
+    "b3": "Buchungen ansehen & verwalten"
+  },
+  "ctaBadge": { "noSms": "Kein SMS-Code im eingeloggten Zustand" }
 
 }

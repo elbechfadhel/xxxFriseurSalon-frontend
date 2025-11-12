@@ -311,6 +311,13 @@
   "currentPassword": "Current password",
 
   "passwordChanged": "Password changed successfully.",
-  "changePasswordFailed": "Failed to change password."
+  "changePasswordFailed": "Failed to change password.",
+  "accountPromo": {
+    "title": "Create an account for faster booking",
+    "b1": "1-click repeat bookings",
+    "b2": "No SMS code needed",
+    "b3": "View & manage your bookings"
+  },
+  "ctaBadge": { "noSms": "No SMS when logged in" }
 }
 
