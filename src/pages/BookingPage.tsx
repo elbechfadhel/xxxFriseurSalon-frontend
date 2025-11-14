@@ -123,7 +123,7 @@ const BookingPage: React.FC = () => {
             }
 
             setCodeSent(true);
-            setNotification((t('verificationCodeSent') as string) || 'Verification code sent via SMS.');
+            setNotification((t('register.smsCodeSent') as string) || 'Verification code sent via SMS.');
             setNotificationType('success');
         } catch {
             setNotification((t('booking.errors.sendCodeFailed') as string) || 'Failed to send SMS code.');
