@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Google reCAPTCHA -->
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+
+    <script>
+        function onCaptchaSuccess(token) {
+            // Send captcha token back to React Native app
+            if (window.ReactNativeWebView) {
+                window.ReactNativeWebView.postMessage(token);
+            }
+        }
+
+        function onCaptchaError() {
+            if (window.ReactNativeWebView) {
+                window.ReactNativeWebView.postMessage("error");
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: transparent;
+        }
+    </style>
+</head>
+
+<body>
+<div
+        class="g-recaptcha"
+        data-sitekey="6LdX8CEsAAAAAGjLuxsNZvS2Zy4069kxyFQUVIuW"
+        data-callback="onCaptchaSuccess"
+        data-error-callback="onCaptchaError"
+></div>
+</body>
+</html>

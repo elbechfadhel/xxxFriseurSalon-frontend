@@ -7,6 +7,7 @@ import { de, enUS } from 'date-fns/locale';
 import DatePicker from 'react-datepicker';
 import EmployeeSelector from '@/pages/EmployeeSelector.tsx';
 import { useAuth } from '@/context/AuthContext';
+import ReCAPTCHA from 'react-google-recaptcha';
 
 interface Employee {
     id: string;
@@ -41,14 +42,14 @@ const BookingPage: React.FC = () => {
     const [customerName, setCustomerName] = useState('');
     const [phone, setPhone] = useState(''); // guest-only
 
-    const [codeSent, setCodeSent] = useState(false);
-    const [smsCode, setSmsCode] = useState('');
     const [busy, setBusy] = useState(false);
-
     const [notification, setNotification] = useState<string | null>(null);
     const [notificationType, setNotificationType] = useState<'success' | 'error' | 'info' | null>(null);
 
+    const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+
     const API_BASE = import.meta.env.VITE_API_URL;
+    const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY as string;
     const getLocale = () => (i18n.language?.startsWith('de') ? de : enUS);
 
     // Prefill when logged in
@@ -76,152 +77,7 @@ const BookingPage: React.FC = () => {
         setNotificationType(null);
     };
 
-    // --------- Guest (SMS) flow ----------
-    const handleSendSmsCode = async () => {
-        clearNotice();
-
-        if (!selectedDateTime || !selectedEmployee || !customerName.trim()) {
-            setNotification((t('bookingInfoMissing') as string) || 'Please complete the booking info first.');
-            setNotificationType('error');
-            return;
-        }
-
-        if (!isValidGermanPhone(phone)) {
-            setNotification((t('invalidPhone') as string) || 'Bitte gib eine gültige deutsche Nummer ein.');
-            setNotificationType('error');
-            return;
-        }
-
-        try {
-            setBusy(true);
-
-            // 1) check slot availability first
-            const free = await isSlotStillFree(API_BASE, selectedEmployee, selectedDateTime);
-            if (!free) {
-                setNotification((t('booking.slotTaken') as string) || 'This time slot has just been taken. Please pick another.');
-                setNotificationType('error');
-                setSelectedDateTime(null);
-                setResetTrigger((p) => p + 1);
-                return;
-            }
-
-            // 2) send SMS
-            const national = phone.replace(/[^\d]/g, '');
-            const fullPhone = `+49${national}`;
-            const res = await fetch(`${API_BASE}/verify-phone/start`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    phone: fullPhone,
-                    lang: i18n.language?.startsWith('de') ? 'de' : 'en',
-                }),
-            });
-            const j = await res.json().catch(() => ({}));
-
-            if (!res.ok || j?.success !== true) {
-                throw new Error(j?.error || 'Failed to send SMS');
-            }
-
-            setCodeSent(true);
-            setNotification((t('register.smsCodeSent') as string) || 'Verification code sent via SMS.');
-            setNotificationType('success');
-        } catch {
-            setNotification((t('booking.errors.sendCodeFailed') as string) || 'Failed to send SMS code.');
-            setNotificationType('error');
-        } finally {
-            setBusy(false);
-        }
-    };
-
-    const handleVerifyCodeAndBook = async () => {
-        clearNotice();
-
-        if (!smsCode.trim()) {
-            setNotification((t('enterCode') as string) || 'Please enter the code.');
-            setNotificationType('error');
-            return;
-        }
-        if (!selectedDateTime || !selectedEmployee) {
-            setNotification((t('bookingInfoMissing') as string) || 'Booking info missing.');
-            setNotificationType('error');
-            return;
-        }
-
-        try {
-            setBusy(true);
-
-            // normalize phone to E.164 (+49…)
-            const national = phone.replace(/[^\d]/g, '');
-            const fullPhone = `+49${national}`;
-
-            // 1) confirm SMS code
-            const verifyRes = await fetch(`${API_BASE}/verify-phone/check`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    phone: fullPhone,
-                    code: smsCode.trim(),
-                    lang: i18n.language?.startsWith('de') ? 'de' : 'en',
-                }),
-            });
-
-            const verifyJson = await verifyRes.json();
-            if (!verifyRes.ok || verifyJson?.success !== true) {
-                throw new Error('Invalid verification code');
-            }
-
-            // 2) recheck slot before final booking
-            const free = await isSlotStillFree(API_BASE, selectedEmployee, selectedDateTime);
-            if (!free) {
-                setNotification((t('booking.slotTaken') as string) || 'This time slot has just been taken. Please pick another.');
-                setNotificationType('error');
-                setSelectedDateTime(null);
-                setResetTrigger((p) => p + 1);
-                return;
-            }
-
-            // 3) create reservation (guest)
-            const bookingRes = await fetch(`${API_BASE}/reservations`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    customerName,
-                    phone: fullPhone,
-                    service: 'Haircut', // TODO: replace with real service
-                    date: selectedDateTime,
-                    employeeId: selectedEmployee,
-                    verificationMethod: 'sms',
-                }),
-            });
-
-            if (!bookingRes.ok) {
-                const errText = await bookingRes.text();
-                console.error('Booking failed:', bookingRes.status, errText);
-                throw new Error('Failed to book');
-            }
-
-            setNotification((t('bookingConfirmed') as string) || 'Your booking is confirmed!');
-            setNotificationType('success');
-
-            // reset form for guest
-            setCustomerName('');
-            setPhone('');
-            setSmsCode('');
-            setCodeSent(false);
-            setSelectedDateTime(null);
-            setSelectedEmployee(null);
-            setSelectedDate(new Date());
-            setResetTrigger((p) => p + 1);
-        } catch (err) {
-            console.error('handleVerifyCodeAndBook error:', err);
-            setNotification((t('bookingError') as string) || 'Booking failed. Please try again.');
-            setNotificationType('error');
-        } finally {
-            setBusy(false);
-        }
-    };
-
-    // --------- Logged-in (no SMS) ----------
+    // --------- Logged-in (no captcha required) ----------
     const handleBookAsLoggedIn = async () => {
         clearNotice();
 
@@ -273,14 +129,91 @@ const BookingPage: React.FC = () => {
             setNotificationType('success');
 
             // Reset only time selection; keep name from profile
-            setSmsCode('');
-            setCodeSent(false);
             setSelectedDateTime(null);
             setSelectedEmployee(null);
             setSelectedDate(new Date());
             setResetTrigger((p) => p + 1);
         } catch (err) {
             console.error('handleBookAsLoggedIn error:', err);
+            setNotification((t('bookingError') as string) || 'Booking failed. Please try again.');
+            setNotificationType('error');
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    // --------- Guest (captcha, no SMS) ----------
+    const handleBookAsGuest = async () => {
+        clearNotice();
+
+        if (!selectedDateTime || !selectedEmployee || !customerName.trim()) {
+            setNotification((t('bookingInfoMissing') as string) || 'Please complete the booking info first.');
+            setNotificationType('error');
+            return;
+        }
+
+        if (!isValidGermanPhone(phone)) {
+            setNotification((t('invalidPhone') as string) || 'Bitte gib eine gültige deutsche Nummer ein.');
+            setNotificationType('error');
+            return;
+        }
+
+        if (!captchaToken) {
+            setNotification((t('captchaRequired') as string) || 'Please complete the security check.');
+            setNotificationType('error');
+            return;
+        }
+
+        try {
+            setBusy(true);
+
+            // 1) Recheck slot availability
+            const free = await isSlotStillFree(API_BASE, selectedEmployee, selectedDateTime);
+            if (!free) {
+                setNotification((t('booking.slotTaken') as string) || 'This time slot has just been taken. Please pick another.');
+                setNotificationType('error');
+                setSelectedDateTime(null);
+                setResetTrigger((p) => p + 1);
+                return;
+            }
+
+            // 2) Normalize phone to E.164 (+49…)
+            const national = phone.replace(/[^\d]/g, '');
+            const fullPhone = `+49${national}`;
+
+            // 3) Create reservation (guest + captcha)
+            const bookingRes = await fetch(`${API_BASE}/reservations/reservations-captcha`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    customerName,
+                    phone: fullPhone,
+                    service: 'Haircut',
+                    date: selectedDateTime,
+                    employeeId: selectedEmployee,
+                    captchaToken,
+                }),
+            });
+
+            if (!bookingRes.ok) {
+                const errText = await bookingRes.text();
+                console.error('Booking failed:', bookingRes.status, errText);
+                throw new Error('Failed to book');
+            }
+
+            setNotification((t('bookingConfirmed') as string) || 'Your booking is confirmed!');
+            setNotificationType('success');
+
+            // reset form for guest
+            setCustomerName('');
+            setPhone('');
+            setCaptchaToken(null);
+            setSelectedDateTime(null);
+            setSelectedEmployee(null);
+            setSelectedDate(new Date());
+            setResetTrigger((p) => p + 1);
+        } catch (err) {
+            console.error('handleBookAsGuest error:', err);
             setNotification((t('bookingError') as string) || 'Booking failed. Please try again.');
             setNotificationType('error');
         } finally {
@@ -367,7 +300,9 @@ const BookingPage: React.FC = () => {
                                 value={customerName}
                                 onChange={(e) => setCustomerName(e.target.value)}
                                 placeholder={t('fullNamePlaceholder') as string}
-                                className={`w-full border rounded px-3 py-2 shadow-sm ${!customerName.trim() ? 'border-red-500' : ''} ${loggedIn ? 'bg-gray-50' : ''}`}
+                                className={`w-full border rounded px-3 py-2 shadow-sm ${
+                                    !customerName.trim() ? 'border-red-500' : ''
+                                } ${loggedIn ? 'bg-gray-50' : ''}`}
                                 readOnly={loggedIn}
                             />
                             {!customerName.trim() && (
@@ -378,7 +313,9 @@ const BookingPage: React.FC = () => {
                         {/* Phone (guest only) */}
                         {!loggedIn && (
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">{t('phoneNumber')}</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    {t('phoneNumber')}
+                                </label>
                                 <div className="flex items-center border rounded px-3 py-2 shadow-sm">
                                     <img src="https://flagcdn.com/w40/de.png" alt="Germany" className="w-5 h-4 mr-2" />
                                     <span className="mr-2 text-sm text-gray-700">+49</span>
@@ -426,42 +363,30 @@ const BookingPage: React.FC = () => {
                                         : 'bg-[#4e9f66] hover:bg-[#3e8455] text-white'
                                 }`}
                             >
-                                {busy ? (t('booking.sending') as string) || 'Booking…' : (t('confirmBooking') as string) || 'Confirm booking'}
+                                {busy
+                                    ? ((t('booking.sending') as string) || 'Booking…')
+                                    : ((t('confirmBooking') as string) || 'Confirm booking')}
                             </button>
                         ) : (
-                            <>
-                                {!codeSent ? (
-                                    <button
-                                        onClick={handleSendSmsCode}
-                                        disabled={!isBookingInfoValidGuest || busy}
-                                        className={`w-full py-3 rounded-lg text-lg font-semibold ${
-                                            !isBookingInfoValidGuest || busy
-                                                ? 'bg-gray-200 text-gray-500 border border-gray-300 shadow-inner cursor-not-allowed'
-                                                : 'bg-[#4e9f66] hover:bg-[#3e8455] text-white'
-                                        }`}
-                                    >
-                                        {busy ? (t('booking.sending') as string) || 'Sending...' : (t('sendVerificationCode') as string) || 'Send SMS Code'}
-                                    </button>
-                                ) : (
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mt-2">{t('enterCode')}</label>
-                                        <input
-                                            type="text"
-                                            value={smsCode}
-                                            onChange={(e) => setSmsCode(e.target.value)}
-                                            placeholder={t('codePlaceholder') as string}
-                                            className="w-full border rounded px-3 py-2 shadow-sm mt-1"
-                                        />
-                                        <button
-                                            onClick={handleVerifyCodeAndBook}
-                                            disabled={busy || !smsCode.trim()}
-                                            className="w-full mt-3 bg-[#4e9f66] hover:bg-[#3e8455] text-white py-2 rounded font-semibold disabled:opacity-50"
-                                        >
-                                            {t('verifyAndBook')}
-                                        </button>
-                                    </div>
-                                )}
-                            </>
+                            <div className="space-y-4">
+                                <ReCAPTCHA
+                                    sitekey={RECAPTCHA_SITE_KEY}
+                                    onChange={(token) => setCaptchaToken(token)}
+                                />
+                                <button
+                                    onClick={handleBookAsGuest}
+                                    disabled={!isBookingInfoValidGuest || busy || !captchaToken}
+                                    className={`w-full py-3 rounded-lg text-lg font-semibold ${
+                                        !isBookingInfoValidGuest || busy || !captchaToken
+                                            ? 'bg-gray-200 text-gray-500 border border-gray-300 shadow-inner cursor-not-allowed'
+                                            : 'bg-[#4e9f66] hover:bg-[#3e8455] text-white'
+                                    }`}
+                                >
+                                    {busy
+                                        ? ((t('booking.sending') as string) || 'Booking…')
+                                        : ((t('confirmBooking') as string) || 'Confirm booking')}
+                                </button>
+                            </div>
                         )}
                     </div>
                 </div>
