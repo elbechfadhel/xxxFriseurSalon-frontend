@@ -8,6 +8,7 @@ import DatePicker from 'react-datepicker';
 import EmployeeSelector from '@/pages/EmployeeSelector.tsx';
 import { useAuth } from '@/context/AuthContext';
 import ReCAPTCHA from 'react-google-recaptcha';
+import EmployeeService from "@/services/EmployeeService.ts";
 
 interface Employee {
     id: string;
@@ -57,20 +58,25 @@ const BookingPage: React.FC = () => {
         if (loggedIn) setCustomerName(customer?.name || '');
     }, [loggedIn, customer]);
 
+
+
+
     useEffect(() => {
         const fetchEmployees = async () => {
             try {
-                const res = await fetch(`${API_BASE}/employees`);
-                const data = await res.json();
+                const data = await EmployeeService.getAll();
                 setEmployees(data);
-            } catch {
-                setNotification(t('failedLoadEmployees') as string);
-                setNotificationType('error');
+            } catch (err) {
+                console.error('Failed to load employees:', err);
             }
         };
+
         fetchEmployees();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+
+
+
 
     const clearNotice = () => {
         setNotification(null);
