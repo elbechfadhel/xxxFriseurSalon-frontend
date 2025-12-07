@@ -270,7 +270,6 @@ const BookingPage: React.FC = () => {
                                     setSelectedEmployee(id);
                                     setResetTrigger((prev) => prev + 1);
                                 }}
-                                apiBase={API_BASE}
                             />
                         </div>
                     </div>

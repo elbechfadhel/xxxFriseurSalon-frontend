@@ -20,9 +20,7 @@ const EmployeeService = {
         return res.json();
     },
 
-    async getPhotoUrl(id: string): Promise<string> {
-        return `${API_BASE}/employees/${id}/photo`;
-    },
+
 
     async create(data: FormData): Promise<Employee> {
         const res = await fetch(`${API_BASE}/employees`, {
