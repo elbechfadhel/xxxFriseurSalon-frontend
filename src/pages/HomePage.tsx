@@ -5,7 +5,6 @@ import { CalendarDays, Clock, Scissors, Smile } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import ServicesGrid from "./ServicesGrid";
-import AccountPromo from "../components/AccountPromo.tsx";
 
 const HomePage: React.FC = () => {
     const { t } = useTranslation();
@@ -65,7 +64,7 @@ const HomePage: React.FC = () => {
                 </div>
             </div>
 
-            <AccountPromo />
+
 
             {/* SERVICES SECTION (using ServicesGrid) */}
             <section className="px-4 sm:px-6 mt-0">

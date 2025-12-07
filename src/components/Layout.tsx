@@ -11,7 +11,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const navigate = useNavigate();
     const { customer, logout } = useAuth(); // ⬅️ from AuthContext
 
-    const next = encodeURIComponent(pathname || '/');
+
 
     const navLinkClass = (path: string) =>
         `text-white ${pathname === path ? 'font-bold underline' : ''}`;
@@ -38,18 +38,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                     <div className="flex items-center space-x-3">
                         {!customer ? (
                             <>
-                                <Link
-                                    to={`/login?next=${next}`}
-                                    className="text-white/90 hover:text-white text-sm px-3 py-1.5 rounded border border-white/20 hover:bg-white/10"
-                                >
-                                    {t('login.login') || 'Login'}
-                                </Link>
-                                <Link
-                                    to={`/register?next=${next}`}
-                                    className="text-sm px-3 py-1.5 rounded bg-[#4e9f66] text-white hover:bg-[#3e8455]"
-                                >
-                                    {t('register.register') || 'Register'}
-                                </Link>
+
+
                             </>
                         ) : (
                             <div className="flex items-center gap-3">
