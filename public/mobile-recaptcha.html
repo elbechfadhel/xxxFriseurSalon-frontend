@@ -26,9 +26,23 @@
 
         function onTurnstileExpired() {
             console.warn("Turnstile token expired");
-            // either "expired" + handle in RN, or just reuse "error"
             sendToReactNative("error");
         }
+
+        // Render Turnstile once everything is loaded
+        window.onload = function () {
+            var params = new URLSearchParams(window.location.search);
+            var lang = params.get("hl") || "auto"; // "de", "en", etc.
+
+            turnstile.render("#cf-turnstile-container", {
+                sitekey: "0x4AAAAAACFWa9CxnzCfTYeQ",
+                callback: onTurnstileCallback,
+                "error-callback": onTurnstileError,
+                "expired-callback": onTurnstileExpired,
+                language: lang, // <-- this makes the widget change language
+                // size: "compact", // optional if you want an even smaller widget
+            });
+        };
     </script>
 
     <style>
@@ -45,12 +59,6 @@
 </head>
 
 <body>
-<div
-        class="cf-turnstile"
-        data-sitekey="0x4AAAAAACFWa9CxnzCfTYeQ"
-        data-callback="onTurnstileCallback"
-        data-error-callback="onTurnstileError"
-        data-expired-callback="onTurnstileExpired"
-></div>
+<div id="cf-turnstile-container"></div>
 </body>
 </html>
