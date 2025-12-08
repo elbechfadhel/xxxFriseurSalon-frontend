@@ -230,6 +230,20 @@ const BookingPage: React.FC = () => {
         }
     };
 
+    // Cloudflare Turnstile supported examples: 'auto', 'de', 'en', 'ar', ...
+    const getTurnstileLang = (lng: string): string => {
+        if (!lng) return 'auto';
+
+        const l = lng.toLowerCase();
+
+        if (l.startsWith('de')) return 'de';
+        if (l.startsWith('en')) return 'en';
+        if (l.startsWith('ar')) return 'ar';
+
+        // fallback to auto (browser language)
+        return 'auto';
+    };
+    const turnstileLang = getTurnstileLang(i18n.language);
     // --------- Validation flags ----------
     const isBookingInfoValidGuest =
         !!selectedDateTime && !!selectedEmployee && !!customerName.trim() && isValidGermanPhone(phone);
@@ -379,9 +393,11 @@ const BookingPage: React.FC = () => {
                             <div className="space-y-4">
                                 <Turnstile
                                     sitekey={TURNSTILE_SITE_KEY}
+                                    key={turnstileLang}
                                     onVerify={(token) => setCaptchaToken(token)}
                                     onExpire={() => setCaptchaToken(null)}
                                     onError={() => setCaptchaToken(null)}
+                                    language={turnstileLang}
                                 />
                                 <button
                                     onClick={handleBookAsGuest}
