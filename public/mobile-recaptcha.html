@@ -4,43 +4,53 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <!-- Google reCAPTCHA -->
-    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    <!-- Cloudflare Turnstile -->
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
     <script>
-        function onCaptchaSuccess(token) {
-            // Send captcha token back to React Native app
+        function sendToReactNative(message) {
             if (window.ReactNativeWebView) {
-                window.ReactNativeWebView.postMessage(token);
+                window.ReactNativeWebView.postMessage(message);
             }
         }
 
-        function onCaptchaError() {
-            if (window.ReactNativeWebView) {
-                window.ReactNativeWebView.postMessage("error");
-            }
+        function onTurnstileCallback(token) {
+            // Send token back to React Native
+            sendToReactNative(token);
+        }
+
+        function onTurnstileError(err) {
+            console.error("Turnstile error:", err);
+            sendToReactNative("error");
+        }
+
+        function onTurnstileExpired() {
+            console.warn("Turnstile token expired");
+            // either "expired" + handle in RN, or just reuse "error"
+            sendToReactNative("error");
         }
     </script>
 
     <style>
-        body {
+        html, body {
             margin: 0;
             padding: 0;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            height: 100%;
             background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
     </style>
 </head>
 
 <body>
 <div
-        class="g-recaptcha"
-        data-sitekey="6LdX8CEsAAAAAGjLuxsNZvS2Zy4069kxyFQUVIuW"
-        data-callback="onCaptchaSuccess"
-        data-error-callback="onCaptchaError"
+        class="cf-turnstile"
+        data-sitekey="0x4AAAAAACFWa9CxnzCfTYeQ"
+        data-callback="onTurnstileCallback"
+        data-error-callback="onTurnstileError"
+        data-expired-callback="onTurnstileExpired"
 ></div>
 </body>
 </html>

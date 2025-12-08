@@ -7,8 +7,11 @@ import { de, enUS } from 'date-fns/locale';
 import DatePicker from 'react-datepicker';
 import EmployeeSelector from '@/pages/EmployeeSelector.tsx';
 import { useAuth } from '@/context/AuthContext';
-import ReCAPTCHA from 'react-google-recaptcha';
+import Turnstile from 'react-turnstile';
+
 import EmployeeService from "@/services/EmployeeService.ts";
+
+
 
 interface Employee {
     id: string;
@@ -50,7 +53,7 @@ const BookingPage: React.FC = () => {
     const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
     const API_BASE = import.meta.env.VITE_API_URL;
-    const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY as string;
+    const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string;
     const getLocale = () => (i18n.language?.startsWith('de') ? de : enUS);
 
     // Prefill when logged in
@@ -374,9 +377,11 @@ const BookingPage: React.FC = () => {
                             </button>
                         ) : (
                             <div className="space-y-4">
-                                <ReCAPTCHA
-                                    sitekey={RECAPTCHA_SITE_KEY}
-                                    onChange={(token) => setCaptchaToken(token)}
+                                <Turnstile
+                                    sitekey={TURNSTILE_SITE_KEY}
+                                    onVerify={(token) => setCaptchaToken(token)}
+                                    onExpire={() => setCaptchaToken(null)}
+                                    onError={() => setCaptchaToken(null)}
                                 />
                                 <button
                                     onClick={handleBookAsGuest}
