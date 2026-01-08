@@ -161,11 +161,12 @@ const TimeSlotSelection: React.FC<TimeSlotSelectionProps> = ({
     return (
         <div className="w-full">
             <div className="py-6 px-2 border rounded">
-                <div className="w-full overflow-x-auto">
-                    <div className="flex flex-nowrap justify-center gap-2">
+                <div className="w-full overflow-x-auto [ -webkit-overflow-scrolling:touch ]">
+                    <div className="flex flex-nowrap justify-start gap-2 w-max">
                         {slots.map(renderSlotButton)}
                     </div>
                 </div>
+
             </div>
 
             {selectedSlotId && (
