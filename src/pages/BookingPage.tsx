@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next';
 import { de, enUS } from 'date-fns/locale';
 import DatePicker from 'react-datepicker';
 import EmployeeSelector from '@/pages/EmployeeSelector.tsx';
-import { useAuth } from '@/context/AuthContext';
 import Turnstile from 'react-turnstile';
 
 import EmployeeService from "@/services/EmployeeService.ts";
@@ -34,8 +33,6 @@ async function isSlotStillFree(apiBase: string, employeeId: string, slotISO: str
 
 const BookingPage: React.FC = () => {
     const { t, i18n } = useTranslation();
-    const { customer } = useAuth();
-    const loggedIn = !!customer;
 
     const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
     const [selectedDateTime, setSelectedDateTime] = useState<string | null>(null);
@@ -44,7 +41,7 @@ const BookingPage: React.FC = () => {
     const [employees, setEmployees] = useState<Employee[]>([]);
 
     const [customerName, setCustomerName] = useState('');
-    const [phone, setPhone] = useState(''); // guest-only
+    const [phone, setPhone] = useState('');
 
     const [busy, setBusy] = useState(false);
     const [notification, setNotification] = useState<string | null>(null);
@@ -55,12 +52,6 @@ const BookingPage: React.FC = () => {
     const API_BASE = import.meta.env.VITE_API_URL;
     const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string;
     const getLocale = () => (i18n.language?.startsWith('de') ? de : enUS);
-
-    // Prefill when logged in
-    useEffect(() => {
-        if (loggedIn) setCustomerName(customer?.name || '');
-    }, [loggedIn, customer]);
-
 
 
 
@@ -84,71 +75,6 @@ const BookingPage: React.FC = () => {
     const clearNotice = () => {
         setNotification(null);
         setNotificationType(null);
-    };
-
-    // --------- Logged-in (no captcha required) ----------
-    const handleBookAsLoggedIn = async () => {
-        clearNotice();
-
-        if (!selectedDateTime || !selectedEmployee || !(customer?.name || customerName)) {
-            setNotification((t('bookingInfoMissing') as string) || 'Please complete the booking info first.');
-            setNotificationType('error');
-            return;
-        }
-
-        try {
-            setBusy(true);
-
-            // Recheck slot
-            const free = await isSlotStillFree(API_BASE, selectedEmployee, selectedDateTime);
-            if (!free) {
-                setNotification((t('booking.slotTaken') as string) || 'This time slot has just been taken. Please pick another.');
-                setNotificationType('error');
-                setSelectedDateTime(null);
-                setResetTrigger((p) => p + 1);
-                return;
-            }
-
-            const token = localStorage.getItem('customer_token');
-
-            // Create reservation (authenticated)
-            const bookingRes = await fetch(`${API_BASE}/reservations`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                },
-                body: JSON.stringify({
-                    customerName: customer?.name || customerName || '—',
-                    phone: customer?.phoneE164 || null, // optional, backend can read from customer
-                    service: 'Haircut', // TODO: replace with real service
-                    date: selectedDateTime,
-                    employeeId: selectedEmployee,
-                    verificationMethod: 'account',
-                }),
-            });
-
-            if (!bookingRes.ok) {
-                const errText = await bookingRes.text();
-                console.error('Booking failed:', bookingRes.status, errText);
-                throw new Error('Failed to book');
-            }
-
-            setNotification((t('bookingConfirmed') as string) || 'Your booking is confirmed!');
-            setNotificationType('success');
-
-            // Reset only time selection; keep name from profile
-            setSelectedDateTime(null);
-            setSelectedEmployee(null);
-            setSelectedDate(new Date());
-            setResetTrigger((p) => p + 1);
-        } catch (err) {
-            console.error('handleBookAsLoggedIn error:', err);
-            setNotification((t('bookingError') as string) || 'Booking failed. Please try again.');
-            setNotificationType('error');
-        } finally {
-            setBusy(false);
-        }
     };
 
     // --------- Guest (captcha, no SMS) ----------
@@ -248,9 +174,6 @@ const BookingPage: React.FC = () => {
     const isBookingInfoValidGuest =
         !!selectedDateTime && !!selectedEmployee && !!customerName.trim() && isValidGermanPhone(phone);
 
-    const isBookingInfoValidLoggedIn =
-        !!selectedDateTime && !!selectedEmployee && !!(customer?.name || customerName);
-
     return (
         <div className="px-4 py-8">
             {/* Heading Section */}
@@ -324,36 +247,33 @@ const BookingPage: React.FC = () => {
                                 placeholder={t('fullNamePlaceholder') as string}
                                 className={`w-full border rounded px-3 py-2 shadow-sm ${
                                     !customerName.trim() ? 'border-red-500' : ''
-                                } ${loggedIn ? 'bg-gray-50' : ''}`}
-                                readOnly={loggedIn}
+                                }`}
                             />
                             {!customerName.trim() && (
                                 <p className="text-red-500 text-sm mt-1">{t('nameRequired')}</p>
                             )}
                         </div>
 
-                        {/* Phone (guest only) */}
-                        {!loggedIn && (
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    {t('phoneNumber')}
-                                </label>
-                                <div className="flex items-center border rounded px-3 py-2 shadow-sm">
-                                    <img src="https://flagcdn.com/w40/de.png" alt="Germany" className="w-5 h-4 mr-2" />
-                                    <span className="mr-2 text-sm text-gray-700">+49</span>
-                                    <input
-                                        type="tel"
-                                        value={phone}
-                                        onChange={(e) => setPhone(e.target.value)}
-                                        placeholder={t('phonePlaceholder') as string}
-                                        className="flex-1 outline-none"
-                                    />
-                                </div>
-                                {!isValidGermanPhone(phone) && phone && (
-                                    <p className="text-sm text-red-500 mt-1">{t('invalidPhone')}</p>
-                                )}
+                        {/* Phone */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                {t('phoneNumber')}
+                            </label>
+                            <div className="flex items-center border rounded px-3 py-2 shadow-sm">
+                                <img src="https://flagcdn.com/w40/de.png" alt="Germany" className="w-5 h-4 mr-2" />
+                                <span className="mr-2 text-sm text-gray-700">+49</span>
+                                <input
+                                    type="tel"
+                                    value={phone}
+                                    onChange={(e) => setPhone(e.target.value)}
+                                    placeholder={t('phonePlaceholder') as string}
+                                    className="flex-1 outline-none"
+                                />
                             </div>
-                        )}
+                            {!isValidGermanPhone(phone) && phone && (
+                                <p className="text-sm text-red-500 mt-1">{t('invalidPhone')}</p>
+                            )}
+                        </div>
                     </div>
 
                     {/* Notifications */}
@@ -375,12 +295,20 @@ const BookingPage: React.FC = () => {
 
                     {/* Actions */}
                     <div className="mt-6 mb-2">
-                        {loggedIn ? (
+                        <div className="space-y-4">
+                            <Turnstile
+                                sitekey={TURNSTILE_SITE_KEY}
+                                key={turnstileLang}
+                                onVerify={(token) => setCaptchaToken(token)}
+                                onExpire={() => setCaptchaToken(null)}
+                                onError={() => setCaptchaToken(null)}
+                                language={turnstileLang}
+                            />
                             <button
-                                onClick={handleBookAsLoggedIn}
-                                disabled={!isBookingInfoValidLoggedIn || busy}
+                                onClick={handleBookAsGuest}
+                                disabled={!isBookingInfoValidGuest || busy || !captchaToken}
                                 className={`w-full py-3 rounded-lg text-lg font-semibold ${
-                                    !isBookingInfoValidLoggedIn || busy
+                                    !isBookingInfoValidGuest || busy || !captchaToken
                                         ? 'bg-gray-200 text-gray-500 border border-gray-300 shadow-inner cursor-not-allowed'
                                         : 'bg-[#4e9f66] hover:bg-[#3e8455] text-white'
                                 }`}
@@ -389,31 +317,7 @@ const BookingPage: React.FC = () => {
                                     ? ((t('booking.sending') as string) || 'Booking…')
                                     : ((t('confirmBooking') as string) || 'Confirm booking')}
                             </button>
-                        ) : (
-                            <div className="space-y-4">
-                                <Turnstile
-                                    sitekey={TURNSTILE_SITE_KEY}
-                                    key={turnstileLang}
-                                    onVerify={(token) => setCaptchaToken(token)}
-                                    onExpire={() => setCaptchaToken(null)}
-                                    onError={() => setCaptchaToken(null)}
-                                    language={turnstileLang}
-                                />
-                                <button
-                                    onClick={handleBookAsGuest}
-                                    disabled={!isBookingInfoValidGuest || busy || !captchaToken}
-                                    className={`w-full py-3 rounded-lg text-lg font-semibold ${
-                                        !isBookingInfoValidGuest || busy || !captchaToken
-                                            ? 'bg-gray-200 text-gray-500 border border-gray-300 shadow-inner cursor-not-allowed'
-                                            : 'bg-[#4e9f66] hover:bg-[#3e8455] text-white'
-                                    }`}
-                                >
-                                    {busy
-                                        ? ((t('booking.sending') as string) || 'Booking…')
-                                        : ((t('confirmBooking') as string) || 'Confirm booking')}
-                                </button>
-                            </div>
-                        )}
+                        </div>
                     </div>
                 </div>
             </div>

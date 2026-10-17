@@ -1,15 +1,12 @@
 import React from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom'; // ⬅️ add useNavigate
+import { Link, useLocation } from 'react-router-dom';
 import Footer from './Footer';
 import LanguageSwitcher from './LanguageSwitcher';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '@/context/AuthContext'; // ⬅️ add
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { t } = useTranslation();
     const { pathname } = useLocation();
-    const navigate = useNavigate();
-    const { customer, logout } = useAuth(); // ⬅️ from AuthContext
 
 
 
@@ -34,44 +31,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                         </Link>
                     </nav>
 
-                    {/* Right: Account + Language */}
+                    {/* Right: Language */}
                     <div className="flex items-center space-x-3">
-                        {!customer ? (
-                            <>
-
-
-                            </>
-                        ) : (
-                            <div className="flex items-center gap-3">
-                                {/* Tiny avatar/initial */}
-                                <div className="w-7 h-7 rounded-full bg-white/20 text-white flex items-center justify-center text-xs">
-                                    {customer.name?.[0]?.toUpperCase() || 'U'}
-                                </div>
-                                <span className="hidden sm:block text-white text-sm">
-                  {t('hi') || 'Hi'}, {customer.name.split(' ')[0]}
-                </span>
-
-                                <Link
-                                    to="/my-bookings"
-                                    className="text-white/90 hover:text-white text-sm"
-                                >
-                                    {t('myBookings') || 'My bookings'}
-                                </Link>
-                                <Link
-                                    to="/me"
-                                    className="text-white/90 hover:text-white text-sm"
-                                >
-                                    {t('profile') || 'Profile'}
-                                </Link>
-                                <button
-                                    onClick={() => { logout(); navigate('/logout'); }}
-                                    className="text-white/90 hover:text-white text-sm px-2 py-1 rounded border border-white/20 hover:bg-white/10"
-                                >
-                                    {t('logout') || 'Logout'}
-                                </button>
-                            </div>
-                        )}
-
                         <LanguageSwitcher />
                     </div>
                 </div>
