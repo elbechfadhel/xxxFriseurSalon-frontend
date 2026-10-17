@@ -9,6 +9,7 @@ import EmployeeSelector from '@/pages/EmployeeSelector.tsx';
 import Turnstile from 'react-turnstile';
 
 import EmployeeService from "@/services/EmployeeService.ts";
+import { Absence, fetchAbsences, findAbsence } from "@/services/AbsenceService.ts";
 
 
 
@@ -67,6 +68,75 @@ const BookingPage: React.FC = () => {
 
         fetchEmployees();
     }, []);
+
+    // Barber absences: shown as a banner, absent days are not selectable
+    const [absences, setAbsences] = useState<Absence[]>([]);
+    useEffect(() => {
+        fetchAbsences()
+            .then(setAbsences)
+            .catch((err) => console.error('Failed to load absences:', err));
+    }, []);
+
+    const selectedAbsence =
+        selectedEmployee && selectedDate ? findAbsence(absences, selectedEmployee, selectedDate) : undefined;
+
+    // A slot picked before switching to an absent barber/day must not be booked
+    useEffect(() => {
+        if (selectedAbsence) setSelectedDateTime(null);
+    }, [selectedAbsence]);
+
+    const employeeName = (id: string) => employees.find((e) => e.id === id)?.name ?? '';
+    const fmtAbsenceDay = (ymd: string) =>
+        new Intl.DateTimeFormat(i18n.language?.startsWith('ar') ? 'ar' : i18n.language?.startsWith('en') ? 'en-GB' : 'de-DE', {
+            weekday: 'short',
+            day: '2-digit',
+            month: '2-digit',
+        }).format(new Date(ymd + 'T12:00:00'));
+    const absenceText = (a: Absence) => {
+        const what = t(`absence.reasons.${a.reason}`, { defaultValue: 'im Urlaub' });
+        const name = employeeName(a.employeeId);
+        return a.startDate === a.endDate
+            ? t('absence.single', { name, what, date: fmtAbsenceDay(a.startDate), defaultValue: '{{name}} ist am {{date}} {{what}}.' })
+            : t('absence.range', {
+                  name,
+                  what,
+                  from: fmtAbsenceDay(a.startDate),
+                  to: fmtAbsenceDay(a.endDate),
+                  defaultValue: '{{name}} ist vom {{from}} bis {{to}} {{what}}.',
+              });
+    };
+
+    // One line per period; when every barber is away for the same period the salon is closed
+    const absenceBanner = (() => {
+        const groups = new Map<string, Absence[]>();
+        absences.forEach((a) => {
+            const key = `${a.startDate}|${a.endDate}`;
+            groups.set(key, [...(groups.get(key) ?? []), a]);
+        });
+        return Array.from(groups.values()).flatMap((group) => {
+            const allAway = employees.length > 0 && employees.every((e) => group.some((a) => a.employeeId === e.id));
+            if (!allAway) return group.map((a) => ({ key: a.id, text: absenceText(a) }));
+            const { startDate, endDate } = group[0];
+            const text =
+                startDate === endDate
+                    ? t('absence.salonClosedSingle', { date: fmtAbsenceDay(startDate), defaultValue: 'Der Salon ist am {{date}} geschlossen.' })
+                    : t('absence.salonClosedRange', {
+                          from: fmtAbsenceDay(startDate),
+                          to: fmtAbsenceDay(endDate),
+                          defaultValue: 'Der Salon ist vom {{from}} bis {{to}} geschlossen.',
+                      });
+            return [{ key: `${startDate}|${endDate}`, text }];
+        });
+    })();
+
+    // Barbers absent on the selected day, for the label under their photo
+    const absentOnSelectedDay: Record<string, string> = {};
+    if (selectedDate) {
+        employees.forEach((e) => {
+            const a = findAbsence(absences, e.id, selectedDate);
+            if (a) absentOnSelectedDay[e.id] = t(`absence.labels.${a.reason}`, { defaultValue: 'Urlaub' });
+        });
+    }
 
 
 
@@ -133,6 +203,17 @@ const BookingPage: React.FC = () => {
             if (!bookingRes.ok) {
                 const errText = await bookingRes.text();
                 console.error('Booking failed:', bookingRes.status, errText);
+                if (bookingRes.status === 409 && errText.includes('EMPLOYEE_ABSENT')) {
+                    setNotification(
+                        t('absence.bookingRefused', {
+                            defaultValue: 'Der Barber ist an diesem Tag nicht da. Bitte wähle einen anderen Tag oder Barber.',
+                        })
+                    );
+                    setNotificationType('error');
+                    setSelectedDateTime(null);
+                    setResetTrigger((p) => p + 1);
+                    return;
+                }
                 throw new Error('Failed to book');
             }
 
@@ -186,6 +267,17 @@ const BookingPage: React.FC = () => {
                 </p>
             </div>
 
+            {/* Barber absences */}
+            {absenceBanner.length > 0 && (
+                <div className="max-w-6xl mx-auto mb-6 rounded-lg border border-orange-300 bg-orange-50 px-4 py-3 text-orange-900">
+                    {absenceBanner.map((line) => (
+                        <p key={line.key} className="text-sm md:text-base font-medium">
+                            {line.text}
+                        </p>
+                    ))}
+                </div>
+            )}
+
             {/* Container */}
             <div className="max-w-6xl bg-white rounded-lg shadow-md flex flex-col md:flex-row gap-6 p-6 mx-auto">
                 {/* Left panel - Date Picker */}
@@ -199,7 +291,9 @@ const BookingPage: React.FC = () => {
                         className="rounded-lg border shadow-md p-2 w-full"
                         inline
                         minDate={new Date()}
-                        filterDate={(d: Date) => d.getDay() !== 0}
+                        filterDate={(d: Date) =>
+                            d.getDay() !== 0 && !(selectedEmployee && findAbsence(absences, selectedEmployee, d))
+                        }
                     />
                 </div>
 
@@ -212,6 +306,7 @@ const BookingPage: React.FC = () => {
                             <EmployeeSelector
                                 employees={employees}
                                 selectedEmployee={selectedEmployee}
+                                absentLabels={absentOnSelectedDay}
                                 onChange={(id) => {
                                     setSelectedEmployee(id);
                                     setResetTrigger((prev) => prev + 1);
@@ -226,12 +321,23 @@ const BookingPage: React.FC = () => {
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 {t('pickTime')}
                             </label>
-                            <TimeSlotSelection
-                                selectedDate={selectedDate || new Date()}
-                                selectedEmployeeId={selectedEmployee}
-                                onSlotSelected={setSelectedDateTime}
-                                resetTrigger={resetTrigger}
-                            />
+                            {selectedAbsence ? (
+                                <div className="rounded border border-orange-300 bg-orange-50 px-4 py-6 text-center text-orange-900">
+                                    <p className="font-medium">{absenceText(selectedAbsence)}</p>
+                                    <p className="text-sm mt-1">
+                                        {t('absence.pickOther', {
+                                            defaultValue: 'Bitte wähle einen anderen Tag oder einen anderen Barber.',
+                                        })}
+                                    </p>
+                                </div>
+                            ) : (
+                                <TimeSlotSelection
+                                    selectedDate={selectedDate || new Date()}
+                                    selectedEmployeeId={selectedEmployee}
+                                    onSlotSelected={setSelectedDateTime}
+                                    resetTrigger={resetTrigger}
+                                />
+                            )}
                         </>
                     )}
 

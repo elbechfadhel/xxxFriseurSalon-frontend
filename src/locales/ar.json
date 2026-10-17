@@ -310,5 +310,23 @@
     "b2": "لا حاجة لرمز SMS",
     "b3": "عرض وإدارة حجوزاتك"
   },
-  "ctaBadge": { "noSms": "لا حاجة لـ SMS عند تسجيل الدخول" }
+  "ctaBadge": { "noSms": "لا حاجة لـ SMS عند تسجيل الدخول" },
+  "absence": {
+    "reasons": {
+      "urlaub": "في إجازة",
+      "krankheit": "غائب (مرض)",
+      "feiertag": "غائب (عطلة رسمية)"
+    },
+    "labels": {
+      "urlaub": "إجازة",
+      "krankheit": "غائب",
+      "feiertag": "عطلة"
+    },
+    "single": "{{name}} {{what}} يوم {{date}}.",
+    "range": "{{name}} {{what}} من {{from}} إلى {{to}}.",
+    "salonClosedSingle": "الصالون مغلق يوم {{date}}.",
+    "salonClosedRange": "الصالون مغلق من {{from}} إلى {{to}}.",
+    "pickOther": "يرجى اختيار يوم آخر أو حلاق آخر.",
+    "bookingRefused": "الحلاق غير متاح في هذا اليوم. يرجى اختيار يوم آخر أو حلاق آخر."
+  }
 }

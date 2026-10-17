@@ -313,6 +313,23 @@
     "b2": "Kein SMS-Code erforderlich",
     "b3": "Buchungen ansehen & verwalten"
   },
-  "ctaBadge": { "noSms": "Kein SMS-Code im eingeloggten Zustand" }
-
+  "ctaBadge": { "noSms": "Kein SMS-Code im eingeloggten Zustand" },
+  "absence": {
+    "reasons": {
+      "urlaub": "im Urlaub",
+      "krankheit": "krankheitsbedingt nicht da",
+      "feiertag": "nicht da (Feiertag)"
+    },
+    "labels": {
+      "urlaub": "Urlaub",
+      "krankheit": "Abwesend",
+      "feiertag": "Feiertag"
+    },
+    "single": "{{name}} ist am {{date}} {{what}}.",
+    "range": "{{name}} ist vom {{from}} bis {{to}} {{what}}.",
+    "salonClosedSingle": "Der Salon ist am {{date}} geschlossen.",
+    "salonClosedRange": "Der Salon ist vom {{from}} bis {{to}} geschlossen.",
+    "pickOther": "Bitte wähle einen anderen Tag oder einen anderen Barber.",
+    "bookingRefused": "Der Barber ist an diesem Tag nicht da. Bitte wähle einen anderen Tag oder Barber."
+  }
 }

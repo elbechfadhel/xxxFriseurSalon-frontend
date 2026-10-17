@@ -318,6 +318,23 @@
     "b2": "No SMS code needed",
     "b3": "View & manage your bookings"
   },
-  "ctaBadge": { "noSms": "No SMS when logged in" }
+  "ctaBadge": { "noSms": "No SMS when logged in" },
+  "absence": {
+    "reasons": {
+      "urlaub": "on vacation",
+      "krankheit": "away (sick)",
+      "feiertag": "away (public holiday)"
+    },
+    "labels": {
+      "urlaub": "Vacation",
+      "krankheit": "Away",
+      "feiertag": "Holiday"
+    },
+    "single": "{{name}} is {{what}} on {{date}}.",
+    "range": "{{name}} is {{what}} from {{from}} to {{to}}.",
+    "salonClosedSingle": "The salon is closed on {{date}}.",
+    "salonClosedRange": "The salon is closed from {{from}} to {{to}}.",
+    "pickOther": "Please choose another day or another barber.",
+    "bookingRefused": "The barber is not available on this day. Please choose another day or barber."
+  }
 }
-

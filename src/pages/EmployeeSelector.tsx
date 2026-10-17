@@ -9,6 +9,8 @@ interface EmployeeSelectorProps {
     employees: Employee[];
     selectedEmployee: string | null;
     onChange: (id: string) => void;
+    /** Short label shown under barbers who are absent on the selected day (e.g. "Urlaub") */
+    absentLabels?: Record<string, string>;
 }
 
 const employeeImages: Record<string, string> = {
@@ -19,7 +21,7 @@ const EmployeeSelector: React.FC<EmployeeSelectorProps> = ({
                                                                employees,
                                                                selectedEmployee,
                                                                onChange,
-
+                                                               absentLabels = {},
                                                            }) => {
     return (
         <div className="w-full overflow-x-auto">
@@ -40,6 +42,9 @@ const EmployeeSelector: React.FC<EmployeeSelectorProps> = ({
                             className="w-16 h-16 object-cover rounded-full mb-2"
                         />
                         <span className="text-sm font-medium">{emp.name}</span>
+                        {absentLabels[emp.id] && (
+                            <span className="mt-1 text-xs font-semibold text-orange-700">{absentLabels[emp.id]}</span>
+                        )}
                     </div>
                 ))}
             </div>
